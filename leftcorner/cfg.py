@@ -4,6 +4,7 @@ import numpy as np
 import networkx as nx
 import graphviz
 
+from tqdm import tqdm
 from collections import defaultdict, Counter
 from functools import cached_property
 from itertools import product
@@ -395,7 +396,7 @@ class CFG:
         V = W.copy()
         U = W.copy()
 
-        for j in N:
+        for j in tqdm(N):
             V, U = U, V
             V = self.R.chart()
             s = U[j, j].star()
@@ -417,14 +418,14 @@ class CFG:
 
         # compute unary chain weights
         A = self.R.chart()
-        for p in self.rules:
+        for p in tqdm(self.rules):
             if len(p.body) == 1 and self.is_nonterminal(p.body[0]):
                 A[p.body[0], p.head] += p.w
 
         W = self._lehmann(self.N, A)
 
         new = self.spawn()
-        for p in self.rules:
+        for p in tqdm(self.rules):
             X, body = p
             if len(body) == 1 and self.is_nonterminal(body[0]): continue
             for Y in self.N:
@@ -656,7 +657,7 @@ class CFG:
         """
         return self.lc_generalized(Ps=Ps, Xs=self.V | self.N, filter=filter)
 
-    def agenda(self, tol=1e-12):
+    def agenda(self, max_iters=10000, tol=1e-12):
         "Agenda-based semi-naive evaluation"
         old = self.R.chart()
 
@@ -674,7 +675,8 @@ class CFG:
             if len(r.body) == 0:
                 change[r.head] += r.w
 
-        while len(change) > 0:
+        for _ in tqdm(range(max_iters)):
+            if len(change) == 0: break
             u,v = change.popitem()
 
             new = old[u] + v
